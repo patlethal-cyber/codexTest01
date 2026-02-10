@@ -1,0 +1,102 @@
+:root{
+  --bg:#0c0b0a;
+  --wood:#2f1d11;
+  --wood2:#5a351c;
+  --gold:#d7b67a;
+  --bronze:#9a6a38;
+  --stone:#7b6e61;
+  --felt:#1e3422;
+  --text:#f8edd7;
+  --arc:5deg;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  min-height:100vh;
+  color:var(--text);
+  font-family:Trebuchet MS,Segoe UI,system-ui,sans-serif;
+  background:radial-gradient(circle at 50% 15%, #2b1e16, #0c0b0a 65%);
+}
+.table-wrap{max-width:1260px;margin:10px auto;padding:8px;position:relative}
+.table-ornament{
+  position:absolute;inset:0;
+  border-radius:20px;
+  background:linear-gradient(145deg,#7a4b26,#3f2817 30%,#2e1d12 70%,#7a4b26);
+  box-shadow:0 0 0 5px #2a190f,0 0 0 8px #aa7e4d,0 12px 24px #000c;
+  z-index:0;
+}
+.table{position:relative;z-index:1;padding:14px}
+.hero,.board,.controls,.hand{
+  background:linear-gradient(180deg,#2a241f,#1b1714);
+  border:2px solid var(--gold);
+  border-radius:14px;
+  padding:8px;
+  margin:8px 0;
+  box-shadow:inset 0 0 0 2px #0008;
+}
+.hero.target-hero{cursor:pointer}
+.board{
+  display:flex;
+  gap:10px;
+  min-height:178px;
+  align-items:center;
+  justify-content:center;
+  border-color:var(--stone);
+  background:radial-gradient(circle at center,#314f34 0,#273f2a 40%, #1e2d20 100%);
+}
+.controls{display:flex;justify-content:center;gap:20px;align-items:center;background:linear-gradient(180deg,#3d2919,#23160f)}
+button{
+  background:linear-gradient(180deg,#7d542f,#57381f);
+  color:var(--text);
+  border:1px solid var(--gold);
+  padding:8px 16px;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:700;
+}
+button:hover{filter:brightness(1.08)}
+.card{
+  width:128px;
+  height:176px;
+  background:linear-gradient(170deg,#4b3827,#2e241b 58%,#241c16);
+  border:2px solid var(--gold);
+  border-radius:11px;
+  padding:7px;
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  box-shadow:0 6px 12px #0008,inset 0 0 0 2px #0004;
+}
+.card .cost{
+  position:absolute;left:6px;top:4px;
+  background:radial-gradient(circle,#57a9ff,#1d4f8f);
+  border:2px solid #a7d4ff;
+  border-radius:50%;width:28px;height:28px;
+  display:grid;place-items:center;font-weight:700;
+}
+.card .name{font-weight:700;text-align:center;font-size:13px;margin-top:20px;text-shadow:0 1px 0 #000}
+.card .text{font-size:11px;opacity:.9;min-height:52px;line-height:1.2}
+.card .stats{text-align:right;font-weight:700}
+.minion.ready .card{box-shadow:0 0 0 2px #6dff79,0 0 15px #67ff89,0 6px 12px #0008}
+.minion.selected .card{outline:3px solid #88b5ff}
+.hand{
+  height:255px;
+  display:flex;
+  justify-content:center;
+  align-items:flex-end;
+  overflow-x:auto;
+  gap:0;
+  background:linear-gradient(180deg,#2f241b,#1f1812);
+}
+.fan{
+  transform:rotate(calc((var(--i) - (var(--n) - 1)/2) * var(--arc))) translateY(calc(abs(var(--i) - (var(--n) - 1)/2) * 2px));
+  transform-origin:bottom center;
+  margin-left:-18px;
+}
+.fan .card{cursor:grab}
+.board.drop{outline:3px dashed #8ec0ff}
+.drop-target{outline:3px dashed #88b5ff; border-radius:12px}
+.overlay{position:absolute;inset:0;background:#0009;display:grid;place-items:center;font-size:44px;font-weight:800;z-index:4}
+.shake{animation:shake .32s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
