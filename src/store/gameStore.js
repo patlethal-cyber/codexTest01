@@ -1,6 +1,7 @@
 import { starterDeck } from '../data/cards.js';
 import { applyAuras, runEffect } from '../logic/effects.js';
 
+const clone = (v) => (globalThis.structuredClone ? structuredClone(v) : JSON.parse(JSON.stringify(v)));
 const hero = (name) => ({ name, hp: 30, mana: 0, maxMana: 0, deck: starterDeck(), hand: [], board: [] });
 
 const state = {
@@ -10,16 +11,19 @@ const state = {
   winner: null,
   selectedAttacker: null,
   shake: {},
+  shakeMinion: {},
 };
 
 const listeners = new Set();
 const emit = () => listeners.forEach((l) => l(getState()));
 export const subscribe = (fn) => (listeners.add(fn), () => listeners.delete(fn));
+export const getState = () => clone(state);
 export const getState = () => structuredClone(state);
 const sideRef = (side) => (side === 'player' ? state.player : state.enemy);
 const other = (side) => (side === 'player' ? state.enemy : state.player);
 
 function draw(sideObj) {
+  if (!sideObj.deck.length) return damageHero(sideObj, 1);
   if (!sideObj.deck.length) {
     damageHero(sideObj, 1);
     return;
@@ -39,6 +43,7 @@ function summon(sideObj, cardData) {
     damage: 0,
     canAttack: false,
     keyword: cardData.keyword || null,
+    effect: cardData.effect || null,
     effect: null,
     tempAttack: 0,
     auraAttack: 0,
@@ -66,6 +71,7 @@ function destroyMinion(target) {
 
 function damageMinion(target, amount) {
   target.damage += amount;
+  state.shakeMinion[target.uid] = Date.now();
   if (target.damage >= effectiveHealth(target)) destroyMinion(target);
 }
 
@@ -78,6 +84,25 @@ function recalc() {
   applyAuras(state.enemy);
 }
 
+function canAttackEnemy(side, targetUid, targetHero = false) {
+  const enemy = other(side);
+  const enemyTaunts = enemy.board.filter((m) => m.keyword === 'taunt');
+  if (targetHero) return enemyTaunts.length === 0;
+  const target = enemy.board.find((m) => m.uid === targetUid);
+  if (!target) return false;
+  if (enemyTaunts.length && target.keyword !== 'taunt') return false;
+  return true;
+}
+
+export const actions = {
+  startGame() {
+    state.player = hero('Player');
+    state.enemy = hero('Enemy');
+    state.turn = 'player';
+    state.winner = null;
+    state.selectedAttacker = null;
+    state.shake = {};
+    state.shakeMinion = {};
 export const actions = {
   startGame() {
     for (let i = 0; i < 3; i++) { draw(state.player); draw(state.enemy); }
@@ -128,6 +153,35 @@ export const actions = {
     emit();
     return true;
   },
+  selectAttacker(uid) {
+    const me = sideRef(state.turn);
+    const attacker = me.board.find((m) => m.uid === uid);
+    if (!attacker || !attacker.canAttack) return;
+    state.selectedAttacker = uid;
+    emit();
+  },
+  attackTarget(targetUid, targetHero = false) {
+    if (state.winner) return false;
+    const me = sideRef(state.turn);
+    const enemy = other(state.turn);
+    const attacker = me.board.find((m) => m.uid === state.selectedAttacker);
+    if (!attacker || !attacker.canAttack) return false;
+    if (!canAttackEnemy(state.turn, targetUid, targetHero)) return false;
+
+    if (targetHero) {
+      damageHero(enemy, effectiveAttack(attacker));
+    } else {
+      const target = enemy.board.find((m) => m.uid === targetUid);
+      if (!target) return false;
+      damageMinion(target, effectiveAttack(attacker));
+      if (me.board.some((m) => m.uid === attacker.uid)) damageMinion(attacker, effectiveAttack(target));
+    }
+
+    if (me.board.some((m) => m.uid === attacker.uid)) attacker.canAttack = false;
+    state.selectedAttacker = null;
+    recalc();
+    emit();
+    return true;
   selectAttacker(uid) { state.selectedAttacker = uid; emit(); },
   attackTarget(targetUid, targetHero = false) {
     const me = sideRef(state.turn);
@@ -165,6 +219,9 @@ export const actions = {
         }
       }
     }
+
+    for (const m of [...me.board]) {
+      if (!m.canAttack || state.winner) continue;
     me.board.forEach((m) => {
       if (!m.canAttack || state.winner) return;
       state.selectedAttacker = m.uid;
@@ -172,6 +229,7 @@ export const actions = {
       if (taunts.length) this.attackTarget(taunts[0].uid, false);
       else if (state.player.board.length && Math.random() < 0.6) this.attackTarget(state.player.board[0].uid, false);
       else this.attackTarget(null, true);
+    }
     });
     this.endTurn();
   },
