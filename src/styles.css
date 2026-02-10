@@ -1,0 +1,17 @@
+:root{--bg:#14110f;--panel:#221e1a;--gold:#c8a55a;--stone:#776a5a;--text:#f6eedf}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#2a2520,var(--bg));color:var(--text);font-family:system-ui}
+.table{max-width:1200px;margin:0 auto;padding:12px;position:relative}
+.hero,.board,.controls,.hand{background:linear-gradient(180deg,#2a241f,#1e1a16);border:2px solid var(--gold);border-radius:12px;padding:8px;margin:8px 0}
+.board{display:flex;gap:8px;min-height:145px;align-items:center;justify-content:center;border-color:var(--stone)}
+.controls{display:flex;justify-content:center;gap:16px;align-items:center}
+button{background:#3a2d1f;color:var(--text);border:1px solid var(--gold);padding:8px 14px;border-radius:8px;cursor:pointer}
+.card{width:122px;height:160px;background:linear-gradient(160deg,#3d3328,#2a221b);border:2px solid var(--gold);border-radius:10px;padding:6px;position:relative;display:flex;flex-direction:column;justify-content:space-between}
+.card .cost{position:absolute;left:6px;top:4px;background:#111;border:1px solid var(--gold);border-radius:50%;width:25px;height:25px;display:grid;place-items:center}
+.card .name{font-weight:700;text-align:center;font-size:13px;margin-top:20px}.card .text{font-size:11px;opacity:.88;min-height:48px}.card .stats{text-align:right}
+.minion.ready .card{box-shadow:0 0 14px #63da78}.minion.selected .card{outline:3px solid #8bb8ff}
+.hand{height:240px;display:flex;justify-content:center;align-items:flex-end;overflow-x:auto;gap:0}
+.fan{transform:rotate(calc((var(--i) - (var(--n) - 1)/2) * 5deg)) translateY(calc(abs(var(--i) - (var(--n) - 1)/2) * 2px));transform-origin:bottom center;margin-left:-16px}
+.board.drop{outline:2px dashed #8bb8ff}
+.overlay{position:absolute;inset:0;background:#0008;display:grid;place-items:center;font-size:42px;font-weight:800;z-index:4}
+.shake{animation:shake .35s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
