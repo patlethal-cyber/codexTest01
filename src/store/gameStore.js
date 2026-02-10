@@ -12,27 +12,22 @@ const state = {
   selectedAttacker: null,
   shake: {},
   shakeMinion: {},
-  log: [],
 };
 
 const listeners = new Set();
 const emit = () => listeners.forEach((l) => l(getState()));
 export const subscribe = (fn) => (listeners.add(fn), () => listeners.delete(fn));
 export const getState = () => clone(state);
+export const getState = () => structuredClone(state);
 const sideRef = (side) => (side === 'player' ? state.player : state.enemy);
 const other = (side) => (side === 'player' ? state.enemy : state.player);
-const sideName = (sideObj) => (sideObj === state.player ? 'player' : 'enemy');
-
-const effectiveAttack = (m) => m.baseAttack + (m.tempAttack || 0) + (m.auraAttack || 0);
-const effectiveHealth = (m) => m.baseHealth + (m.auraHealth || 0);
-
-function addLog(text) {
-  state.log.unshift(text);
-  state.log = state.log.slice(0, 6);
-}
 
 function draw(sideObj) {
   if (!sideObj.deck.length) return damageHero(sideObj, 1);
+  if (!sideObj.deck.length) {
+    damageHero(sideObj, 1);
+    return;
+  }
   if (sideObj.hand.length >= 10) return;
   sideObj.hand.push(sideObj.deck.pop());
 }
@@ -43,14 +38,13 @@ function summon(sideObj, cardData) {
     uid: `${cardData.name}-${Math.random().toString(36).slice(2, 8)}`,
     name: cardData.name,
     cost: 0,
-    text: cardData.text || '',
-    type: 'minion',
     baseAttack: cardData.attack,
     baseHealth: cardData.health,
     damage: 0,
     canAttack: false,
     keyword: cardData.keyword || null,
     effect: cardData.effect || null,
+    effect: null,
     tempAttack: 0,
     auraAttack: 0,
     auraHealth: 0,
@@ -63,6 +57,9 @@ function damageHero(sideObj, amount) {
   if (sideObj.hp <= 0) state.winner = sideObj.name === 'Player' ? 'Enemy' : 'Player';
 }
 function healHero(sideObj, amount) { sideObj.hp = Math.min(30, sideObj.hp + amount); }
+
+function effectiveAttack(m) { return m.baseAttack + (m.tempAttack || 0) + (m.auraAttack || 0); }
+function effectiveHealth(m) { return m.baseHealth + (m.auraHealth || 0); }
 
 function destroyMinion(target) {
   const owner = state.player.board.find((m) => m.uid === target.uid) ? state.player : state.enemy;
@@ -98,8 +95,6 @@ function canAttackEnemy(side, targetUid, targetHero = false) {
 }
 
 export const actions = {
-  effectiveAttack,
-  effectiveHealth,
   startGame() {
     state.player = hero('Player');
     state.enemy = hero('Enemy');
@@ -108,7 +103,8 @@ export const actions = {
     state.selectedAttacker = null;
     state.shake = {};
     state.shakeMinion = {};
-    state.log = ['Battle starts'];
+export const actions = {
+  startGame() {
     for (let i = 0; i < 3; i++) { draw(state.player); draw(state.enemy); }
     this.startTurn('player');
   },
@@ -120,7 +116,6 @@ export const actions = {
     draw(me);
     me.board.forEach((m) => { m.canAttack = true; m.tempAttack = 0; });
     recalc();
-    addLog(`${side === 'player' ? 'Your' : 'Enemy'} turn`);
     emit();
   },
   endTurn() {
@@ -129,31 +124,18 @@ export const actions = {
     this.startTurn(next);
     if (next === 'enemy') setTimeout(() => this.runEnemyTurn(), 450);
   },
-  playCard(side, uid, position = null) {
+  playCard(side, uid) {
     if (state.turn !== side || state.winner) return false;
     const me = sideRef(side);
     const i = me.hand.findIndex((c) => c.uid === uid);
-    if (i < 0) return false;
+    if (i < 0 || me.board.length >= 7) return false;
     const c = me.hand[i];
     if (c.cost > me.mana) return false;
-
     me.mana -= c.cost;
     me.hand.splice(i, 1);
-
-    if (c.type === 'spell') {
-      runEffect(c.effect, effectCtx(side, { uid: c.uid, name: c.name }));
-      addLog(`${side === 'player' ? 'You' : 'Enemy'} cast ${c.name}`);
-      recalc();
-      emit();
-      return true;
-    }
-
-    if (me.board.length >= 7) return false;
     const minion = {
       uid: c.uid,
       name: c.name,
-      text: c.text,
-      type: 'minion',
       cost: c.cost,
       baseAttack: c.attack,
       baseHealth: c.health,
@@ -165,12 +147,8 @@ export const actions = {
       auraAttack: 0,
       auraHealth: 0,
     };
-
-    const idx = position == null ? me.board.length : Math.max(0, Math.min(position, me.board.length));
-    me.board.splice(idx, 0, minion);
+    me.board.push(minion);
     if (minion.keyword === 'battlecry' && minion.effect) runEffect(minion.effect, effectCtx(side, minion));
-
-    addLog(`${side === 'player' ? 'You' : 'Enemy'} played ${minion.name}`);
     recalc();
     emit();
     return true;
@@ -192,13 +170,11 @@ export const actions = {
 
     if (targetHero) {
       damageHero(enemy, effectiveAttack(attacker));
-      addLog(`${attacker.name} hit hero for ${effectiveAttack(attacker)}`);
     } else {
       const target = enemy.board.find((m) => m.uid === targetUid);
       if (!target) return false;
       damageMinion(target, effectiveAttack(attacker));
       if (me.board.some((m) => m.uid === attacker.uid)) damageMinion(attacker, effectiveAttack(target));
-      addLog(`${attacker.name} fought ${target.name}`);
     }
 
     if (me.board.some((m) => m.uid === attacker.uid)) attacker.canAttack = false;
@@ -206,6 +182,27 @@ export const actions = {
     recalc();
     emit();
     return true;
+  selectAttacker(uid) { state.selectedAttacker = uid; emit(); },
+  attackTarget(targetUid, targetHero = false) {
+    const me = sideRef(state.turn);
+    const enemy = other(state.turn);
+    const attacker = me.board.find((m) => m.uid === state.selectedAttacker);
+    if (!attacker || !attacker.canAttack) return;
+    const enemyTaunts = enemy.board.filter((m) => m.keyword === 'taunt');
+    if (targetHero) {
+      if (enemyTaunts.length) return;
+      damageHero(enemy, effectiveAttack(attacker));
+    } else {
+      const target = enemy.board.find((m) => m.uid === targetUid);
+      if (!target) return;
+      if (enemyTaunts.length && target.keyword !== 'taunt') return;
+      damageMinion(target, effectiveAttack(attacker));
+      damageMinion(attacker, effectiveAttack(target));
+    }
+    attacker.canAttack = false;
+    state.selectedAttacker = null;
+    recalc();
+    emit();
   },
   runEnemyTurn() {
     if (state.turn !== 'enemy' || state.winner) return;
@@ -215,9 +212,8 @@ export const actions = {
     while (played) {
       played = false;
       for (const c of [...me.hand]) {
-        if (c.cost <= me.mana) {
-          const pos = c.type === 'minion' ? Math.floor(Math.random() * (me.board.length + 1)) : null;
-          this.playCard('enemy', c.uid, pos);
+        if (c.cost <= me.mana && me.board.length < 7) {
+          this.playCard('enemy', c.uid);
           played = true;
           break;
         }
@@ -226,12 +222,15 @@ export const actions = {
 
     for (const m of [...me.board]) {
       if (!m.canAttack || state.winner) continue;
+    me.board.forEach((m) => {
+      if (!m.canAttack || state.winner) return;
       state.selectedAttacker = m.uid;
       const taunts = state.player.board.filter((x) => x.keyword === 'taunt');
       if (taunts.length) this.attackTarget(taunts[0].uid, false);
       else if (state.player.board.length && Math.random() < 0.6) this.attackTarget(state.player.board[0].uid, false);
       else this.attackTarget(null, true);
     }
+    });
     this.endTurn();
   },
 };

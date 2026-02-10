@@ -22,14 +22,15 @@ Then open:
 
 ### Play cards
 
-- Drag a card from your hand to a `+` insert slot on your board to place minions in any position.
-- Spell cards resolve instantly when dragged to an insert slot (they do not stay on board).
+- Drag a card from your hand (bottom fan) onto your board area.
+- If you have enough mana and board space, the card is played.
 
 ### Attack
 
 - Click one of your glowing/ready minions to select attacker, then click enemy minion/hero.
 - You can also **drag a ready friendly minion** onto an enemy minion or enemy hero to attack.
-- Hover any minion on board to read full effect text via tooltip.
+- Click one of your glowing/ready minions to select attacker.
+- Click an enemy minion to attack it.
 - If enemy has any **Taunt** minion, you must attack Taunt first.
 
 ## Notes
