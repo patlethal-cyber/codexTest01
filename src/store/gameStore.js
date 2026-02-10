@@ -18,11 +18,16 @@ const listeners = new Set();
 const emit = () => listeners.forEach((l) => l(getState()));
 export const subscribe = (fn) => (listeners.add(fn), () => listeners.delete(fn));
 export const getState = () => clone(state);
+export const getState = () => structuredClone(state);
 const sideRef = (side) => (side === 'player' ? state.player : state.enemy);
 const other = (side) => (side === 'player' ? state.enemy : state.player);
 
 function draw(sideObj) {
   if (!sideObj.deck.length) return damageHero(sideObj, 1);
+  if (!sideObj.deck.length) {
+    damageHero(sideObj, 1);
+    return;
+  }
   if (sideObj.hand.length >= 10) return;
   sideObj.hand.push(sideObj.deck.pop());
 }
@@ -39,6 +44,7 @@ function summon(sideObj, cardData) {
     canAttack: false,
     keyword: cardData.keyword || null,
     effect: cardData.effect || null,
+    effect: null,
     tempAttack: 0,
     auraAttack: 0,
     auraHealth: 0,
@@ -97,6 +103,8 @@ export const actions = {
     state.selectedAttacker = null;
     state.shake = {};
     state.shakeMinion = {};
+export const actions = {
+  startGame() {
     for (let i = 0; i < 3; i++) { draw(state.player); draw(state.enemy); }
     this.startTurn('player');
   },
@@ -174,6 +182,27 @@ export const actions = {
     recalc();
     emit();
     return true;
+  selectAttacker(uid) { state.selectedAttacker = uid; emit(); },
+  attackTarget(targetUid, targetHero = false) {
+    const me = sideRef(state.turn);
+    const enemy = other(state.turn);
+    const attacker = me.board.find((m) => m.uid === state.selectedAttacker);
+    if (!attacker || !attacker.canAttack) return;
+    const enemyTaunts = enemy.board.filter((m) => m.keyword === 'taunt');
+    if (targetHero) {
+      if (enemyTaunts.length) return;
+      damageHero(enemy, effectiveAttack(attacker));
+    } else {
+      const target = enemy.board.find((m) => m.uid === targetUid);
+      if (!target) return;
+      if (enemyTaunts.length && target.keyword !== 'taunt') return;
+      damageMinion(target, effectiveAttack(attacker));
+      damageMinion(attacker, effectiveAttack(target));
+    }
+    attacker.canAttack = false;
+    state.selectedAttacker = null;
+    recalc();
+    emit();
   },
   runEnemyTurn() {
     if (state.turn !== 'enemy' || state.winner) return;
@@ -193,12 +222,15 @@ export const actions = {
 
     for (const m of [...me.board]) {
       if (!m.canAttack || state.winner) continue;
+    me.board.forEach((m) => {
+      if (!m.canAttack || state.winner) return;
       state.selectedAttacker = m.uid;
       const taunts = state.player.board.filter((x) => x.keyword === 'taunt');
       if (taunts.length) this.attackTarget(taunts[0].uid, false);
       else if (state.player.board.length && Math.random() < 0.6) this.attackTarget(state.player.board[0].uid, false);
       else this.attackTarget(null, true);
     }
+    });
     this.endTurn();
   },
 };

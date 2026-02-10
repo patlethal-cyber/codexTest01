@@ -29,6 +29,8 @@ Then open:
 
 - Click one of your glowing/ready minions to select attacker, then click enemy minion/hero.
 - You can also **drag a ready friendly minion** onto an enemy minion or enemy hero to attack.
+- Click one of your glowing/ready minions to select attacker.
+- Click an enemy minion to attack it.
 - If enemy has any **Taunt** minion, you must attack Taunt first.
 
 ## Notes
